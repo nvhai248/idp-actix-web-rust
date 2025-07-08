@@ -5,12 +5,12 @@ use sea_orm::{ConnectionTrait, Statement};
 
 #[get("/hello/{name}")]
 pub async fn greet(name: web::Path<String>) -> impl Responder {
-    utils::api_response::ApiResponse::new(200, format!("Hello {name}!").to_string())
+    utils::api_response::ApiResponse::<()>::new(200, format!("Hello, {}!", name), None, None)
 }
 
 #[get("/test")]
 pub async fn test(app_state: web::Data<AppState>) -> impl Responder {
-    let res = app_state
+    let _res = app_state
         .db
         .query_all(Statement::from_string(
             sea_orm::DatabaseBackend::Postgres,
@@ -18,5 +18,5 @@ pub async fn test(app_state: web::Data<AppState>) -> impl Responder {
         ))
         .await
         .unwrap();
-    utils::api_response::ApiResponse::new(200, "OK".to_string())
+    utils::api_response::ApiResponse::<()>::new(200, "OK".to_string(), None, None)
 }
