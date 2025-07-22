@@ -1,4 +1,6 @@
+use actix_web::{FromRequest, HttpRequest, dev::Payload};
 use chrono::Utc;
+use futures_util::future::{Ready, ready};
 use jsonwebtoken::{
     DecodingKey, EncodingKey, Header, TokenData, Validation, decode, encode, errors::Error,
 };
@@ -19,13 +21,38 @@ pub struct RegisterRequest {
     pub password: String,
 }
 
-
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Claims {
     pub sub: String,   // Subject (user ID)
     pub exp: usize,    // Expiration time
     pub iat: usize,    // Issued at
     pub email: String, // User email
+}
+
+impl FromRequest for Claims {
+    type Error = actix_web::Error;
+    type Future = Ready<Result<Self, actix_web::Error>>;
+
+    fn from_request(req: &HttpRequest, _: &mut Payload) -> Self::Future {
+        if let Some(auth_header) = req.headers().get("Authorization") {
+            if let Ok(auth_str) = auth_header.to_str() {
+                if auth_str.starts_with("Bearer ") {
+                    let token = &auth_str[7..]; // Skip "Bearer "
+                    match verify_jwt(token) {
+                        Ok(data) => return ready(Ok(data.claims)),
+                        Err(_) => {
+                            return ready(Err(actix_web::error::ErrorUnauthorized(
+                                "Invalid token",
+                            )));
+                        }
+                    }
+                }
+            }
+        }
+        ready(Err(actix_web::error::ErrorUnauthorized(
+            "Missing Authorization header",
+        )))
+    }
 }
 
 pub fn create_jwt(user_id: &str, email: &str) -> Result<String, Error> {

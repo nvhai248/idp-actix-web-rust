@@ -4,10 +4,8 @@ use actix_web::web;
 
 pub fn config(config: &mut web::ServiceConfig) {
     config.service(
-        web::scope("/auth")
-            .service(handlers::auth_handler::register)
-            .service(handlers::auth_handler::login)
+        web::scope("/users")
             .wrap(JwtMiddleware)
-            .service(handlers::auth_handler::get_profile),
+            .service(handlers::user_handler::get_user),
     );
 }

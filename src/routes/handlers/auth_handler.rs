@@ -2,7 +2,7 @@
 use crate::utils::app_state::AppState;
 use crate::utils::auth::{Claims, LoginRequest, RegisterRequest};
 use crate::utils::{self, hash::hash_password};
-use actix_web::{Responder, post, web};
+use actix_web::{Responder, post, web, get};
 use entity::user::ActiveModel;
 use jsonwebtoken::{DecodingKey, Validation};
 use sea_orm::{ActiveValue::Set, entity::prelude::*};
@@ -23,14 +23,16 @@ pub async fn login(
     match user {
         Ok(Some(user_model)) => {
             // Verify password
-            let is_valid = match utils::hash::verify_password(&user_model.password, &payload.password) {
-                Ok(valid) => valid,
-                Err(_) => false,
-            };
+            let is_valid =
+                match utils::hash::verify_password(&user_model.password, &payload.password) {
+                    Ok(valid) => valid,
+                    Err(_) => false,
+                };
 
             if is_valid {
                 // Create JWT
-                let jwt_result = utils::auth::create_jwt(&user_model.id.to_string(), &user_model.email);
+                let jwt_result =
+                    utils::auth::create_jwt(&user_model.id.to_string(), &user_model.email);
 
                 match jwt_result {
                     Ok(token) => {
@@ -80,12 +82,9 @@ pub async fn login(
             None,
             None,
         ),
-        Err(_) => utils::api_response::ApiResponse::new(
-            500,
-            "Database error".to_string(),
-            None,
-            None,
-        ),
+        Err(_) => {
+            utils::api_response::ApiResponse::new(500, "Database error".to_string(), None, None)
+        }
     }
 }
 
@@ -127,6 +126,44 @@ pub async fn register(
         Err(_) => utils::api_response::ApiResponse::new(
             500,
             "Failed to register user".to_string(),
+            None,
+            None,
+        ),
+    }
+}
+
+#[get("/profile")]
+pub async fn get_profile(app_state: web::Data<AppState>, claims: Claims) -> impl Responder {
+    let db = &app_state.db;
+
+    let user_id: i32 = match claims.sub.parse() {
+        Ok(id) => id,
+        Err(_) => {
+            return utils::api_response::ApiResponse::new(
+                400,
+                "Invalid user ID in token".to_string(),
+                None,
+                None,
+            );
+        }
+    };
+
+    match entity::user::Entity::find_by_id(user_id).one(db).await {
+        Ok(Some(user)) => utils::api_response::ApiResponse::<entity::user::Model>::new(
+            200,
+            "OK".to_string(),
+            Some(user),
+            None,
+        ),
+        Ok(None) => utils::api_response::ApiResponse::new(
+            404,
+            "User not found".to_string(),
+            None,
+            None,
+        ),
+        Err(err) => utils::api_response::ApiResponse::new(
+            500,
+            err.to_string(),
             None,
             None,
         ),
