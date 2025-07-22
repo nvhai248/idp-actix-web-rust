@@ -44,3 +44,18 @@
     ```sh
     sea-orm-cli generate entity -o entity/src
     ```
+
+- Create new migration
+    ```sh
+    sea-orm-cli migrate generate migration-name
+    ```
+
+- Run migration
+    ```sh
+    sea-orm-cli migrate up
+    ```
+
+- Rollback migration
+    ```sh
+    sea-orm-cli migrate down
+    ```
