@@ -7,7 +7,10 @@ pub fn config(config: &mut web::ServiceConfig) {
         web::scope("/auth")
             .service(handlers::auth_handler::register)
             .service(handlers::auth_handler::login)
-            .wrap(JwtMiddleware)
-            .service(handlers::auth_handler::get_profile),
+            .service(
+                web::scope("/")
+                    .wrap(JwtMiddleware)
+                    .service(handlers::auth_handler::get_profile),
+            ),
     );
 }
